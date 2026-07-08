@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>買い付けタイミングの目安</title>
+<style>
+  :root{
+    --ink:#1c2321;
+    --paper:#f3efe6;
+    --paper2:#ece6d8;
+    --line:#c9c0ac;
+    --muted:#6d6a5f;
+    --calm:#3a6b5f;
+    --calm-soft:#e0ebe6;
+    --deep:#7a4a3a;
+    --deep-soft:#f0e4de;
+    --amber:#a8802a;
+    --amber-soft:#f3ecd9;
+    --spent:#b9b1a0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 80px}
+
+  .mast{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
+  .mast .kicker{font-size:11px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+  .mast h1{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-weight:600;font-size:26px;margin:0;letter-spacing:.02em}
+  .mast .sub{font-size:13px;color:var(--muted);margin-top:6px}
+  .creed{font-family:"Hiragino Mincho ProN",serif;font-size:13.5px;border-left:3px solid var(--calm);padding:8px 14px;margin:18px 0 26px;background:var(--calm-soft)}
+
+  h2{font-family:"Hiragino Mincho ProN",serif;font-size:15px;font-weight:600;letter-spacing:.04em;margin:30px 0 12px;display:flex;align-items:baseline;gap:10px}
+  h2 .n{font-size:11px;color:var(--calm);letter-spacing:.15em;border:1px solid var(--calm);border-radius:2px;padding:1px 6px;line-height:1.4}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field.full{grid-column:1/-1}
+  label{font-size:12px;color:var(--muted)}
+  input,select{
+    font:inherit;font-size:15px;color:var(--ink);background:#fff;
+    border:1px solid var(--line);border-radius:4px;padding:9px 11px;width:100%;
+  }
+  input:focus,select:focus{outline:2px solid var(--calm);outline-offset:0;border-color:var(--calm)}
+  input:disabled,select:disabled{background:var(--paper2);color:var(--muted)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .seg button{flex:1;font:inherit;font-size:13px;padding:9px 6px;background:#fff;border:0;cursor:pointer;color:var(--muted)}
+  .seg button[aria-pressed="true"]{background:var(--calm);color:#fff;font-weight:600}
+  .seg button:disabled{cursor:default;opacity:.75}
+  .hint{font-size:11px;color:var(--muted);margin-top:3px}
+
+  .decl{border:1.5px solid var(--calm);border-radius:8px;background:#fff;padding:14px 16px;margin-top:14px}
+  .decl .t{font-size:11px;letter-spacing:.15em;color:var(--calm);text-transform:uppercase;margin-bottom:6px}
+  .decl .row{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:13.5px}
+  .decl .row b{font-family:"Hiragino Mincho ProN",serif;font-variant-numeric:tabular-nums}
+  .decl .k{color:var(--muted);font-size:12px;margin-right:4px}
+
+  .banner{border-radius:7px;padding:12px 15px;margin-top:14px;font-size:13px;line-height:1.55;border:1px solid}
+  .banner.newhigh{background:var(--amber-soft);border-color:var(--amber)}
+  .banner.recover{background:var(--deep-soft);border-color:var(--deep)}
+  .banner b{display:block;margin-bottom:2px}
+  .banner .btn{margin-top:8px}
+
+  .headline{margin:8px 0 4px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+  .headline .band{padding:5px 16px;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  .headline .body{padding:18px 18px 20px}
+  .headline .lead{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+  .bignum{font-family:"Hiragino Mincho ProN",serif;font-size:34px;font-weight:600;line-height:1.1}
+  .bignum .yen{font-size:18px;font-weight:400;color:var(--muted);margin-right:2px}
+  .headline .at{font-size:13px;color:var(--muted);margin-top:6px}
+  .state-act .band{background:var(--calm);color:#fff}
+  .state-act .bignum{color:var(--calm)}
+  .state-wait .band{background:var(--paper2);color:var(--muted)}
+  .state-done .band{background:var(--deep);color:#fff}
+  .state-done .bignum{color:var(--deep);font-size:24px}
+
+  .fire{background:var(--calm-soft);border:1px solid var(--calm);border-radius:7px;padding:13px 15px;margin-top:12px}
+  .fire .fr{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .fire .field{flex:1;min-width:160px}
+  .fire .sum{font-size:12.5px;margin-bottom:8px}
+
+  .pend{margin:16px 0 4px}
+  .pend .track{position:relative;height:34px;background:linear-gradient(90deg,#eef2f0,#efe6df);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+  .pend .fill{position:absolute;top:0;left:0;height:100%;background:rgba(58,107,95,.14);border-right:2px solid var(--calm)}
+  .pend .nowline{position:absolute;top:0;height:100%;width:2px;background:var(--calm)}
+  .pend .now{position:absolute;top:-2px;transform:translateX(-50%);font-size:11px;color:var(--calm);font-weight:600;white-space:nowrap}
+  .pend .scale{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px}
+
+  table.ladder{width:100%;border-collapse:collapse;margin-top:6px;font-size:13.5px}
+  .ladder th{font-size:11px;color:var(--muted);font-weight:400;text-align:right;padding:4px 8px;border-bottom:1px solid var(--line)}
+  .ladder th:first-child{text-align:left}
+  .ladder td{padding:9px 8px;text-align:right;border-bottom:1px solid var(--paper2)}
+  .ladder td:first-child{text-align:left}
+  .ladder tr.blockhead td{
+    padding:5px 8px;font-size:10.5px;letter-spacing:.1em;color:var(--muted);
+    text-align:left;background:var(--paper2);border-bottom:1px solid var(--line);
+  }
+  .step-tag{font-size:10px;color:var(--muted);letter-spacing:.08em}
+  .drop{font-family:"Hiragino Mincho ProN",serif;font-weight:600}
+  .price{color:var(--muted);font-variant-numeric:tabular-nums}
+  .alloc{font-variant-numeric:tabular-nums}
+  tr.done{color:var(--spent)}
+  tr.done .drop{color:var(--spent)}
+  tr.next{background:var(--calm-soft)}
+  tr.next .drop{color:var(--calm)}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .dot.d{background:var(--spent)}
+  .dot.n{background:var(--calm)}
+  .dot.w{background:var(--line)}
+  .blocknote{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.55}
+  .blocknote b{color:var(--calm)}
+
+  .ammo{display:flex;gap:14px;margin-top:14px}
+  .ammo .box{flex:1;border:1px solid var(--line);border-radius:6px;padding:11px 13px;background:#fff}
+  .ammo .k{font-size:11px;color:var(--muted)}
+  .ammo .v{font-family:"Hiragino Mincho ProN",serif;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+
+  .freq{margin-top:8px}
+  .freq .row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12.5px}
+  .freq .lbl{width:78px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+  .freq .barwrap{flex:1;background:var(--paper2);border-radius:3px;height:18px;position:relative;overflow:hidden}
+  .freq .bar{height:100%;background:var(--deep);opacity:.72}
+  .freq .cnt{width:80px;font-size:12px;font-variant-numeric:tabular-nums}
+  .note{font-size:11.5px;color:var(--muted);background:var(--paper2);border-radius:5px;padding:9px 12px;margin-top:10px;line-height:1.55}
+  .note b{color:var(--deep)}
+
+  .disc{font-size:11px;color:var(--muted);margin-top:34px;padding-top:14px;border-top:1px solid var(--line);line-height:1.7}
+  .btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .btn{font:inherit;font-size:13px;padding:9px 15px;border-radius:5px;border:1px solid var(--calm);background:var(--calm);color:#fff;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--calm)}
+  .btn.warn{border-color:var(--deep);color:var(--deep);background:transparent}
+  .btn.amber{border-color:var(--amber);background:var(--amber);color:#fff}
+  .btn:disabled{opacity:.5;cursor:default}
+  .hist{margin-top:8px;font-size:12.5px}
+  .hist .h{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--paper2);color:var(--muted)}
+  @media (max-width:520px){
+    .grid{grid-template-columns:1fr}
+    .ammo{flex-direction:column}
+    .bignum{font-size:28px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mast">
+    <div class="kicker">規律の練習場 · サテライト資金用</div>
+    <h1>買い付けタイミングの目安</h1>
+    <div class="sub">直近高値を起点に、下がった分だけ淡々と買い増す。予測はしない。</div>
+  </div>
+
+  <div class="creed">
+    周りが恐怖で売るその瞬間に、感情を切り離して規律で買う。<br>
+    含み損を抱えながら手を動かし続ける——これはその練習です。
+  </div>
+
+  <!-- 01 declaration -->
+  <h2><span class="n">01</span>戦場を宣言する</h2>
+  <div class="hint" style="margin-bottom:10px">
+    高値・総資金・タイプは<b>宣言＝固定</b>です。途中で書き換えられません（規律を守るため）。変えたくなったら「戦場を畳む」でリセットします。
+  </div>
+  <div class="grid" id="declInputs">
+    <div class="field">
+      <label for="asset">対象資産</label>
+      <select id="asset">
+        <option value="S&P500">S&P500</option>
+        <option value="NYダウ">NYダウ</option>
+        <option value="ナスダック">ナスダック</option>
+        <option value="Nikkei225">日経225</option>
+        <option value="SOX(半導体)">SOX / 2243（半導体）</option>
+        <option value="その他">その他（メモに記入）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="memo">メモ（任意：銘柄名など）</label>
+      <input id="memo" placeholder="例：eMAXIS Slim S&P500">
+    </div>
+    <div class="field">
+      <label>タイプ（戦場の深さ）</label>
+      <div class="seg" role="group">
+        <button id="tBroad" aria-pressed="true">広い指数 −30%</button>
+        <button id="tVol" aria-pressed="false">高ボラ(SOX) −45%</button>
+      </div>
+      <div class="hint" id="typeHint">S&P500・NYダウ・日経など。戦場＝直近高値から30%。</div>
+    </div>
+    <div class="field">
+      <label for="high">直近高値（自分で調べて入力）</label>
+      <input id="high" type="number" inputmode="decimal" placeholder="例：6000">
+    </div>
+    <div class="field full">
+      <label for="cash">この戦場に投じる総資金（サテライト）</label>
+      <input id="cash" type="number" inputmode="decimal" placeholder="例：600000">
+    </div>
+  </div>
+  <div class="btn-row" id="declBtnRow">
+    <button class="btn" id="declBtn">この内容で宣言する（固定）</button>
+  </div>
+
+  <div class="decl" id="declCard" style="display:none">
+    <div class="t">宣言済みの戦場</div>
+    <div class="row" id="declRow"></div>
+    <div class="btn-row">
+      <button class="btn warn" id="closeBtn">戦場を畳む（リセット）</button>
+    </div>
+  </div>
+
+  <!-- banners -->
+  <div class="banner newhigh" id="bNewHigh" style="display:none">
+    <b>高値更新</b>
+    現在値が宣言した直近高値を上回りました。この下落局面は終わりです。戦場を畳み、<span id="nhCash"></span>を持って新しい高値で宣言し直してください。
+    <button class="btn amber" id="nhBtn">畳んで、新しい戦場を宣言する</button>
+  </div>
+  <div class="banner recover" id="bRecover" style="display:none">
+    <b>局面の終わり（−5%以内まで回復）</b>
+    下落局面は「高値から−5%以内まで戻したら終了」と数えます（同梱の頻度データと同じ定義）。この戦場は役目を終えました。残弾 <span id="rcCash"></span> を持って畳み、次の局面に備えられます。
+    <button class="btn" id="rcBtn" style="border-color:var(--deep);background:var(--deep)">畳んで、残弾で次に備える</button>
+  </div>
+
+  <!-- battle UI -->
+  <div id="battleUI" style="display:none">
+  <h2><span class="n">02</span>今日の現在値を入れる</h2>
+  <div class="grid">
+    <div class="field full">
+      <label for="now">現在値（毎回、自分で見て入力する——それが訓練）</label>
+      <input id="now" type="number" inputmode="decimal" placeholder="例：5400">
+    </div>
+  </div>
+
+  <div id="headline" class="headline state-wait">
+    <div class="band" id="hBand">現在の位置</div>
+    <div class="body">
+      <div class="lead" id="hLead"></div>
+      <div class="bignum" id="hNum">—</div>
+      <div class="at" id="hAt"></div>
+    </div>
+  </div>
+
+  <div class="fire" id="firePanel" style="display:none">
+    <div class="sum" id="fireSum"></div>
+    <div class="fr">
+      <div class="field">
+        <label for="fillPrice">実際に買った価格（約定価格）</label>
+        <input id="fillPrice" type="number" inputmode="decimal" placeholder="例：5390">
+      </div>
+      <button class="btn" id="fireBtn">実行を記録する</button>
+    </div>
+    <div class="hint" style="margin-top:6px">複数の段に一気に到達した場合は、到達した段を<b>まとめて全部</b>撃ちます。日を分けて悩む余地は作りません。</div>
+  </div>
+
+  <div class="pend">
+    <div class="track">
+      <div class="fill" id="pFill" style="width:0%"></div>
+      <div class="nowline" id="pLine" style="left:0%"></div>
+      <div class="now" id="pNow" style="left:0%">—</div>
+    </div>
+    <div class="scale">
+      <span>直近高値 0%</span>
+      <span id="pMid"></span>
+      <span id="pEnd"></span>
+    </div>
+  </div>
+
+  <!-- 03 ladder -->
+  <h2><span class="n">03</span>6段の作戦（加速型 · 前半4 : 後半6）</h2>
+  <table class="ladder">
+    <thead>
+      <tr><th>段</th><th>下落率</th><th>この価格で</th><th>買う金額</th></tr>
+    </thead>
+    <tbody id="ladderBody"></tbody>
+  </table>
+  <div class="blocknote">
+    ※ 4段目が3段目より少ないのは間違いではありません。資金は<b>前半（浅い下落）に40%・後半（本物の暴落域）に60%</b>の二つの財布に分けてあり、それぞれの財布の中で深いほど厚く撃ちます。4段目は「後半の財布の1発目」なので一度軽くなります。
+  </div>
+
+  <div class="ammo">
+    <div class="box"><div class="k">投入済み</div><div class="v" id="spent">¥0</div></div>
+    <div class="box"><div class="k">残弾（未投入）</div><div class="v" id="ammo">¥0</div></div>
+    <div class="box"><div class="k">平均取得単価（実約定）</div><div class="v" id="avg">—</div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn ghost" id="undoBtn">直前の記録を1つ戻す</button>
+  </div>
+  <div class="hist" id="histBox"></div>
+
+  <!-- 04 frequency -->
+  <h2><span class="n">04</span>この深さは、過去どのくらいの頻度か</h2>
+  <div class="hint" style="margin-bottom:6px">1990–2026（約35年）／ 出典：Yahoo Finance。今いる深さが「普段」なのか「稀」なのかの目安。</div>
+  <div class="freq" id="freqBox"></div>
+  <div class="note" id="freqNote"></div>
+  </div><!-- /battleUI -->
+
+  <div class="disc">
+    <b>このアプリは「規律の練習場」であり、投資助言・投資勧誘ではありません。</b>特定の金融商品の取得・売却を推奨するものではなく、金融商品取引法上の投資助言・代理業に該当するサービスでもありません。表示される金額・価格はすべて、あなた自身が宣言した規律から機械的に計算された目安であり、将来の値動きを予測・保証するものではありません。投資判断はご自身の責任で行ってください。<br>
+    ここに表示される平均取得単価・履歴は練習の控えです。<b>正式な保有記録・取得単価は、お使いの証券会社の画面が正</b>です。ポートフォリオ管理はそちらで行ってください。<br>
+    ここで動かすのは失っても致命傷にならないサテライト資金だけ。コア資産は別途、積立・債券でゆっくり育ててください。<br>
+    記録はこの端末のこのブラウザの中だけに保存され、どこにも送信されません。<b>ブラウザのデータ消去や長期間の未使用で消えることがあります</b>。大事な数字（平均単価・買付履歴）は別途メモを推奨します。<br>
+    <span style="letter-spacing:.08em">ver 1.0</span>
+  </div>
+</div>
+
+<script>
+const DD = {"S&P500":{"years":36.5,"max_dd_pct":-56.8,"range_bands":{"-20〜-30":1,"-30〜-40":1,"-40〜-50":1,"-50〜-60":1,"-60以下":0}},"NYダウ":{"years":34.5,"max_dd_pct":-53.8,"range_bands":{"-20〜-30":1,"-30〜-40":2,"-40〜-50":0,"-50〜-60":1,"-60以下":0}},"ナスダック":{"years":36.5,"max_dd_pct":-77.9,"range_bands":{"-20〜-30":3,"-30〜-40":3,"-40〜-50":0,"-50〜-60":0,"-60以下":1}},"SOX(半導体)":{"years":32.1,"max_dd_pct":-87.1,"range_bands":{"-20〜-30":2,"-30〜-40":3,"-40〜-50":1,"-50〜-60":2,"-60以下":1}},"Nikkei225":{"years":36.5,"max_dd_pct":-81.8,"range_bands":{"-20〜-30":2,"-30〜-40":0,"-40〜-50":0,"-50〜-60":0,"-60以下":1}}};
+
+// 純・線形加速：前半3段=総資金40%を1:2:3、後半3段=総資金60%を1:2:3
+const WEIGHTS=[0.40/6,0.80/6,1.20/6,0.60/6,1.20/6,1.80/6];
+const RECOVER_PCT=5; // 局面終了の定義：高値から−5%以内まで回復（同梱データと同一）
+
+// state.decl = null | {asset,memo,type,high,cash,date}（宣言でロック）
+// state.fills = [{stage,trigger,fillPrice,amount,date}]
+const state={decl:null,fills:[],now:''};
+
+const $=id=>document.getElementById(id);
+const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
+
+function save(){try{localStorage.setItem('bt_v2',JSON.stringify(state));}catch(e){}}
+function load(){
+  try{const s=JSON.parse(localStorage.getItem('bt_v2')||'null');
+    if(s){state.decl=s.decl||null;state.fills=s.fills||[];state.now=s.now||'';}
+  }catch(e){}
+}
+
+let uiType='broad';
+function setTypeUI(t){
+  uiType=t;
+  $('tBroad').setAttribute('aria-pressed',String(t==='broad'));
+  $('tVol').setAttribute('aria-pressed',String(t==='vol'));
+  $('typeHint').textContent=t==='broad'
+    ?'S&P500・NYダウ・日経など。戦場＝直近高値から30%。'
+    :'SOX / 2243 など。ボラが高いので戦場を45%まで深く取る。';
+}
+$('tBroad').onclick=()=>{if(!state.decl)setTypeUI('broad')};
+$('tVol').onclick=()=>{if(!state.decl)setTypeUI('vol')};
+$('asset').onchange=()=>{
+  if(state.decl)return;
+  if($('asset').value==='SOX(半導体)')setTypeUI('vol');
+};
+
+$('declBtn').onclick=()=>{
+  const high=parseFloat($('high').value)||0, cash=parseFloat($('cash').value)||0;
+  if(high<=0||cash<=0){alert('直近高値と総資金を入れてください。');return;}
+  state.decl={asset:$('asset').value,memo:$('memo').value,type:uiType,high,cash,
+    date:new Date().toLocaleDateString('ja-JP')};
+  state.fills=[];state.now='';
+  render();
+};
+
+function closeBattle(){
+  if(!state.decl)return;
+  const spent=state.fills.reduce((a,f)=>a+f.amount,0);
+  const remain=Math.max(0,state.decl.cash-spent);
+  const asset=state.decl.asset,memo=state.decl.memo,type=state.decl.type;
+  state.decl=null;state.fills=[];state.now='';
+  // 引き継ぎ：資産・タイプはそのまま、資金欄には残弾をプリセット
+  $('asset').value=asset;$('memo').value=memo;setTypeUI(type);
+  $('high').value='';$('cash').value=remain>0?Math.round(remain):'';
+  render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$('closeBtn').onclick=()=>{
+  if(confirm('この戦場を畳みます。買付記録は消えます（平均単価などは事前にメモを）。よろしいですか？'))closeBattle();
+};
+$('nhBtn').onclick=closeBattle;
+$('rcBtn').onclick=closeBattle;
+
+function stages(){
+  const D=state.decl.type==='broad'?30:45, step=D/6, h=state.decl.high, c=state.decl.cash;
+  const arr=[];for(let n=1;n<=6;n++)arr.push({n,drop:step*n,price:h*(1-step*n/100),amount:c*WEIGHTS[n-1]});
+  return {D,step,arr};
+}
+
+function render(){
+  const declared=!!state.decl;
+  ['asset','memo','high','cash'].forEach(id=>$(id).disabled=declared);
+  $('tBroad').disabled=declared;$('tVol').disabled=declared;
+  $('declBtnRow').style.display=declared?'none':'flex';
+  $('declCard').style.display=declared?'block':'none';
+  $('battleUI').style.display=declared?'block':'none';
+  $('bNewHigh').style.display='none';$('bRecover').style.display='none';
+  if(!declared){save();return;}
+
+  const d=state.decl,{D,arr}=stages();
+  const label=d.asset+(d.memo?'（'+d.memo+'）':'');
+  $('declRow').innerHTML=
+    '<span><span class="k">対象</span><b>'+label+'</b></span>'+
+    '<span><span class="k">タイプ</span><b>'+(d.type==='broad'?'広い指数 −30%':'高ボラ −45%')+'</b></span>'+
+    '<span><span class="k">直近高値</span><b>'+d.high.toLocaleString()+'</b></span>'+
+    '<span><span class="k">総資金</span><b>'+yen(d.cash)+'</b></span>'+
+    '<span><span class="k">宣言日</span><b>'+d.date+'</b></span>';
+
+  if($('now').value!==state.now)$('now').value=state.now;
+  const nowV=parseFloat(state.now)||0;
+  const curDrop=nowV>0?(1-nowV/d.high)*100:null;
+
+  const filled=new Set(state.fills.map(f=>f.stage));
+  const spent=state.fills.reduce((a,f)=>a+f.amount,0);
+  const remain=Math.max(0,d.cash-spent);
+  const allDone=filled.size>=6;
+
+  // banners：高値更新 ＞ −5%回復（買付済のときのみ）
+  if(nowV>0&&nowV>d.high){
+    $('nhCash').textContent='残弾 '+yen(remain);
+    $('bNewHigh').style.display='block';
+  } else if(nowV>0&&state.fills.length>0&&curDrop!==null&&curDrop<RECOVER_PCT){
+    $('rcCash').textContent=yen(remain);
+    $('bRecover').style.display='block';
+  }
+
+  // 到達済み・未実行の段（まとめ撃ち対象）
+  const reached=curDrop!==null?arr.filter(s=>!filled.has(s.n)&&curDrop>=s.drop-1e-9):[];
+  let next=null;for(const s of arr){if(!filled.has(s.n)){next=s;break;}}
+
+  // pendulum
+  $('pMid').textContent='−'+(D/2).toFixed(D===45?1:0)+'%';
+  $('pEnd').textContent='戦場の底 −'+D+'%';
+  const pct=curDrop!==null?Math.min(100,Math.max(0,curDrop/D*100)):0;
+  $('pFill').style.width=pct+'%';$('pLine').style.left=pct+'%';
+  $('pNow').style.left=Math.min(96,Math.max(4,pct))+'%';
+  $('pNow').textContent=curDrop!==null?'今 −'+Math.max(0,curDrop).toFixed(1)+'%':'—';
+
+  // headline
+  const hl=$('headline');hl.className='headline';
+  const band=$('hBand'),lead=$('hLead'),n2=$('hNum'),at=$('hAt');
+  $('firePanel').style.display='none';
+  const fmt=v=>v.toFixed(D===45?1:0);
+  if(nowV<=0){
+    hl.classList.add('state-wait');band.textContent='入力待ち';
+    lead.textContent='今日の現在値を入れると、次の一手が出ます';n2.textContent='—';at.textContent='';
+  }else if(allDone){
+    hl.classList.add('state-done');band.textContent='戦場の底 · 撃ち切り';
+    lead.textContent='全6段を実行済み。ここで弾は尽きる設計です';
+    n2.textContent='お疲れさま';at.textContent='ここから先が下げても、それは別の話。予測しない。';
+  }else if(reached.length>0){
+    hl.classList.add('state-act');band.textContent='今、動く場面';
+    const tot=reached.reduce((a,s)=>a+s.amount,0);
+    lead.textContent=reached.length>1
+      ?reached.map(s=>s.n).join('・')+'段目に一気に到達——まとめて撃ちます'
+      :reached[0].n+'段目のトリガーに到達（−'+fmt(reached[0].drop)+'%）';
+    n2.innerHTML='<span class="yen">買う</span>'+yen(tot);
+    at.textContent='含み損の最中でも、規律で。買ったら下の欄に約定価格を記録してください。';
+    $('firePanel').style.display='block';
+    $('fireSum').innerHTML='記録する段：<b>'+reached.map(s=>s.n+'段（'+yen(s.amount)+'）').join(' ＋ ')+'</b>'+(reached.length>1?' ＝ 合計 <b>'+yen(tot)+'</b>':'');
+  }else if(next){
+    hl.classList.add('state-wait');band.textContent='待機';
+    const gap=next.drop-Math.max(0,curDrop??0);
+    lead.textContent='次は '+next.n+'段目：あと −'+gap.toFixed(1)+'% 下げたら';
+    n2.innerHTML='<span class="yen">買う</span>'+yen(next.amount);
+    at.textContent='トリガー価格 約'+Math.round(next.price).toLocaleString()+'。それまでは何もしないのが正解。';
+  }
+
+  // ladder（前半/後半のブロック見出し付き）
+  const tb=$('ladderBody');tb.innerHTML='';
+  arr.forEach(s=>{
+    if(s.n===1){const h=document.createElement('tr');h.className='blockhead';
+      h.innerHTML='<td colspan="4">前半の財布 ─ 浅い下落（総資金の40%）</td>';tb.appendChild(h);}
+    if(s.n===4){const h=document.createElement('tr');h.className='blockhead';
+      h.innerHTML='<td colspan="4">後半の財布 ─ 本物の暴落域（総資金の60%）</td>';tb.appendChild(h);}
+    const done=filled.has(s.n);
+    const isReach=reached.some(r=>r.n===s.n);
+    const isNext=!isReach&&next&&s.n===next.n&&!done;
+    const tr=document.createElement('tr');
+    if(done)tr.classList.add('done');
+    if(isReach||isNext)tr.classList.add('next');
+    const dotc=done?'d':(isReach||isNext)?'n':'w';
+    tr.innerHTML=
+      '<td><span class="dot '+dotc+'"></span><span class="step-tag">'+s.n+'段</span></td>'+
+      '<td class="drop">−'+fmt(s.drop)+'%</td>'+
+      '<td class="price">'+Math.round(s.price).toLocaleString()+'</td>'+
+      '<td class="alloc">'+yen(s.amount)+'</td>';
+    tb.appendChild(tr);
+  });
+
+  // ammo（平均単価は実約定価格ベース）
+  const units=state.fills.reduce((a,f)=>a+(f.fillPrice>0?f.amount/f.fillPrice:0),0);
+  $('spent').textContent=yen(spent);
+  $('ammo').textContent=yen(remain);
+  $('avg').textContent=units>0?Math.round(spent/units).toLocaleString():'—';
+
+  // history
+  const hb=$('histBox');hb.innerHTML='';
+  state.fills.slice().reverse().forEach(f=>{
+    const dv=document.createElement('div');dv.className='h';
+    dv.innerHTML='<span>'+f.date+' · '+f.stage+'段目 · 約定 '+Math.round(f.fillPrice).toLocaleString()+'</span><span>'+yen(f.amount)+'</span>';
+    hb.appendChild(dv);
+  });
+
+  renderFreq();
+  save();
+}
+
+function renderFreq(){
+  const d=state.decl;if(!d)return;
+  let key=d.asset,noteExtra='';
+  if(!DD[key]){key=d.type==='vol'?'SOX(半導体)':'S&P500';
+    noteExtra='（「その他」のため、タイプに応じた代表指数の分布を参考表示）';}
+  const dd=DD[key],bands=dd.range_bands;
+  const max=Math.max(...Object.values(bands),1);
+  const fb=$('freqBox');fb.innerHTML='';
+  Object.entries(bands).forEach(([lbl,c])=>{
+    const row=document.createElement('div');row.className='row';
+    row.innerHTML='<span class="lbl">'+lbl+'</span>'+
+      '<span class="barwrap"><span class="bar" style="width:'+(c/max*100)+'%"></span></span>'+
+      '<span class="cnt">'+c+'回 / '+dd.years+'年</span>';
+    fb.appendChild(row);
+  });
+  $('freqNote').innerHTML=
+    '<b>'+key+'</b>'+noteExtra+'：'+dd.years+'年で最大 '+dd.max_dd_pct+'%。'+
+    '深い帯（−50%超）は稀ですが、<b>頻度の低さと損害の深刻さは別物</b>です。'+
+    'この分布は「各局面が最終的に止まった深さ」。浅く見えても、その裏に35年に1度の−'+Math.abs(dd.max_dd_pct).toFixed(0)+'%が同居しています。';
+}
+
+$('now').addEventListener('input',()=>{state.now=$('now').value;render();});
+$('fireBtn').onclick=()=>{
+  const fp=parseFloat($('fillPrice').value)||0;
+  if(fp<=0){alert('実際に買った価格（約定価格）を入れてください。');return;}
+  const d=state.decl,{arr}=stages();
+  const nowV=parseFloat(state.now)||0;
+  const curDrop=nowV>0?(1-nowV/d.high)*100:0;
+  const filled=new Set(state.fills.map(f=>f.stage));
+  const reached=arr.filter(s=>!filled.has(s.n)&&curDrop>=s.drop-1e-9);
+  if(reached.length===0)return;
+  const today=new Date().toLocaleDateString('ja-JP');
+  reached.forEach(s=>state.fills.push({stage:s.n,trigger:s.price,fillPrice:fp,amount:s.amount,date:today}));
+  $('fillPrice').value='';
+  render();
+};
+$('undoBtn').onclick=()=>{state.fills.pop();render();};
+
+load();
+if(state.decl){setTypeUI(state.decl.type);}
+render();
+</script>
+</body>
+</html>
