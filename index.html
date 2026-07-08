@@ -299,7 +299,7 @@
     ここに表示される平均取得単価・履歴は練習の控えです。<b>正式な保有記録・取得単価は、お使いの証券会社の画面が正</b>です。ポートフォリオ管理はそちらで行ってください。<br>
     ここで動かすのは失っても致命傷にならないサテライト資金だけ。コア資産は別途、積立・債券でゆっくり育ててください。<br>
     記録はこの端末のこのブラウザの中だけに保存され、どこにも送信されません。<b>ブラウザのデータ消去や長期間の未使用で消えることがあります</b>。大事な数字（平均単価・買付履歴）は別途メモを推奨します。<br>
-    <span style="letter-spacing:.08em">ver 1.0</span>
+    <span style="letter-spacing:.08em">ver 1.1</span>
   </div>
 </div>
 
@@ -337,7 +337,7 @@ $('tBroad').onclick=()=>{if(!state.decl)setTypeUI('broad')};
 $('tVol').onclick=()=>{if(!state.decl)setTypeUI('vol')};
 $('asset').onchange=()=>{
   if(state.decl)return;
-  if($('asset').value==='SOX(半導体)')setTypeUI('vol');
+  setTypeUI($('asset').value==='SOX(半導体)'?'vol':'broad');
 };
 
 $('declBtn').onclick=()=>{
