@@ -191,9 +191,19 @@
       <label for="high">直近高値（自分で調べて入力）</label>
       <input id="high" type="number" inputmode="decimal" placeholder="例：6000">
     </div>
-    <div class="field full">
+    <div class="field">
+      <label>資金の通貨（金額指示の単位）</label>
+      <div class="seg" role="group">
+        <button id="cJpy" aria-pressed="true">¥ 円</button>
+        <button id="cUsd" aria-pressed="false">$ ドル</button>
+      </div>
+    </div>
+    <div class="field">
       <label for="cash">この戦場に投じる総資金（サテライト）</label>
       <input id="cash" type="number" inputmode="decimal" placeholder="例：600000">
+    </div>
+    <div class="field full">
+      <div class="hint">直近高値・現在値は資産の値をそのまま入れます（VOOならドルの株価）。通貨は「<b>総資金を何で数えるか</b>」の選択です。ドル口座の資金で買う人は $ を選んで総資金もドルで。円資金からその都度ドル転して買う人は ¥ のまま総資金を円で——買い指示が円で出るので、その額をドル転して買えばOK。</div>
     </div>
   </div>
   <div class="btn-row" id="declBtnRow">
@@ -299,7 +309,7 @@
     ここに表示される平均取得単価・履歴は練習の控えです。<b>正式な保有記録・取得単価は、お使いの証券会社の画面が正</b>です。ポートフォリオ管理はそちらで行ってください。<br>
     ここで動かすのは失っても致命傷にならないサテライト資金だけ。コア資産は別途、積立・債券でゆっくり育ててください。<br>
     記録はこの端末のこのブラウザの中だけに保存され、どこにも送信されません。<b>ブラウザのデータ消去や長期間の未使用で消えることがあります</b>。大事な数字（平均単価・買付履歴）は別途メモを推奨します。<br>
-    <span style="letter-spacing:.08em">ver 1.1</span>
+    <span style="letter-spacing:.08em">ver 1.2</span>
   </div>
 </div>
 
@@ -315,7 +325,11 @@ const RECOVER_PCT=5; // 局面終了の定義：高値から−5%以内まで回
 const state={decl:null,fills:[],now:''};
 
 const $=id=>document.getElementById(id);
-const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
+let uiCur='jpy';
+const cur=()=>state.decl?(state.decl.cur||'jpy'):uiCur;
+const yen=n=>cur()==='usd'
+  ?'$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})
+  :'¥'+Math.round(n).toLocaleString('ja-JP');
 
 function save(){try{localStorage.setItem('bt_v2',JSON.stringify(state));}catch(e){}}
 function load(){
@@ -340,10 +354,13 @@ $('asset').onchange=()=>{
   setTypeUI($('asset').value==='SOX(半導体)'?'vol':'broad');
 };
 
+$('cJpy').onclick=()=>{if(!state.decl){uiCur='jpy';render();}};
+$('cUsd').onclick=()=>{if(!state.decl){uiCur='usd';render();}};
+
 $('declBtn').onclick=()=>{
   const high=parseFloat($('high').value)||0, cash=parseFloat($('cash').value)||0;
   if(high<=0||cash<=0){alert('直近高値と総資金を入れてください。');return;}
-  state.decl={asset:$('asset').value,memo:$('memo').value,type:uiType,high,cash,
+  state.decl={asset:$('asset').value,memo:$('memo').value,type:uiType,cur:uiCur,high,cash,
     date:new Date().toLocaleDateString('ja-JP')};
   state.fills=[];state.now='';
   render();
@@ -353,9 +370,10 @@ function closeBattle(){
   if(!state.decl)return;
   const spent=state.fills.reduce((a,f)=>a+f.amount,0);
   const remain=Math.max(0,state.decl.cash-spent);
-  const asset=state.decl.asset,memo=state.decl.memo,type=state.decl.type;
+  const asset=state.decl.asset,memo=state.decl.memo,type=state.decl.type,c=state.decl.cur||'jpy';
   state.decl=null;state.fills=[];state.now='';
-  // 引き継ぎ：資産・タイプはそのまま、資金欄には残弾をプリセット
+  // 引き継ぎ：資産・タイプ・通貨はそのまま、資金欄には残弾をプリセット
+  uiCur=c;
   $('asset').value=asset;$('memo').value=memo;setTypeUI(type);
   $('high').value='';$('cash').value=remain>0?Math.round(remain):'';
   render();
@@ -377,6 +395,9 @@ function render(){
   const declared=!!state.decl;
   ['asset','memo','high','cash'].forEach(id=>$(id).disabled=declared);
   $('tBroad').disabled=declared;$('tVol').disabled=declared;
+  $('cJpy').disabled=declared;$('cUsd').disabled=declared;
+  $('cJpy').setAttribute('aria-pressed',String(cur()==='jpy'));
+  $('cUsd').setAttribute('aria-pressed',String(cur()==='usd'));
   $('declBtnRow').style.display=declared?'none':'flex';
   $('declCard').style.display=declared?'block':'none';
   $('battleUI').style.display=declared?'block':'none';
@@ -388,6 +409,7 @@ function render(){
   $('declRow').innerHTML=
     '<span><span class="k">対象</span><b>'+label+'</b></span>'+
     '<span><span class="k">タイプ</span><b>'+(d.type==='broad'?'広い指数 −30%':'高ボラ −45%')+'</b></span>'+
+    '<span><span class="k">通貨</span><b>'+((d.cur||'jpy')==='usd'?'$ ドル建て':'¥ 円建て')+'</b></span>'+
     '<span><span class="k">直近高値</span><b>'+d.high.toLocaleString()+'</b></span>'+
     '<span><span class="k">総資金</span><b>'+yen(d.cash)+'</b></span>'+
     '<span><span class="k">宣言日</span><b>'+d.date+'</b></span>';
