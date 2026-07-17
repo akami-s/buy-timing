@@ -137,6 +137,10 @@
   .btn:disabled{opacity:.5;cursor:default}
   .hist{margin-top:8px;font-size:12.5px}
   .hist .h{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--paper2);color:var(--muted)}
+  .tabs{display:flex;gap:6px;margin:22px 0 0;flex-wrap:wrap;align-items:center}
+  .tab{font:inherit;font-size:12.5px;padding:8px 14px;border:1px solid var(--line);border-radius:6px;background:var(--paper2);color:var(--muted);cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tab[aria-selected="true"]{background:var(--calm);border-color:var(--calm);color:#fff;font-weight:600}
+  .tab.add{background:transparent;border-style:dashed;color:var(--calm)}
   @media (max-width:520px){
     .grid{grid-template-columns:1fr}
     .ammo{flex-direction:column}
@@ -157,6 +161,9 @@
     周りが恐怖で売るその瞬間に、感情を切り離して規律で買う。<br>
     含み損を抱えながら手を動かし続ける——これはその練習です。
   </div>
+
+  <div class="tabs" id="tabBar"></div>
+  <div class="hint" style="margin-top:6px">戦場は3つまで。<b>戦場ごとに別々の資金を割り当ててください</b>——同じお金を二つの戦場に宣言すると、暴落が同時に来たとき弾が足りなくなります。</div>
 
   <!-- 01 declaration -->
   <h2><span class="n">01</span>戦場を宣言する</h2>
@@ -208,6 +215,7 @@
   </div>
   <div class="btn-row" id="declBtnRow">
     <button class="btn" id="declBtn">この内容で宣言する（固定）</button>
+    <button class="btn ghost" id="delSlotBtn" style="display:none">この枠を削除</button>
   </div>
 
   <div class="decl" id="declCard" style="display:none">
@@ -309,7 +317,7 @@
     ここに表示される平均取得単価・履歴は練習の控えです。<b>正式な保有記録・取得単価は、お使いの証券会社の画面が正</b>です。ポートフォリオ管理はそちらで行ってください。<br>
     ここで動かすのは失っても致命傷にならないサテライト資金だけ。コア資産は別途、積立・債券でゆっくり育ててください。<br>
     記録はこの端末のこのブラウザの中だけに保存され、どこにも送信されません。<b>ブラウザのデータ消去や長期間の未使用で消えることがあります</b>。大事な数字（平均単価・買付履歴）は別途メモを推奨します。<br>
-    <span style="letter-spacing:.08em">ver 1.2</span>
+    <span style="letter-spacing:.08em">ver 1.3</span>
   </div>
 </div>
 
@@ -319,63 +327,105 @@ const DD = {"S&P500":{"years":36.5,"max_dd_pct":-56.8,"range_bands":{"-20〜-30"
 // 純・線形加速：前半3段=総資金40%を1:2:3、後半3段=総資金60%を1:2:3
 const WEIGHTS=[0.40/6,0.80/6,1.20/6,0.60/6,1.20/6,1.80/6];
 const RECOVER_PCT=5; // 局面終了の定義：高値から−5%以内まで回復（同梱データと同一）
+const MAX_BATTLES=3;
 
-// state.decl = null | {asset,memo,type,high,cash,date}（宣言でロック）
-// state.fills = [{stage,trigger,fillPrice,amount,date}]
-const state={decl:null,fills:[],now:''};
+// battle = {decl:null|{asset,memo,type,cur,high,cash,date}, fills:[{stage,trigger,fillPrice,amount,date}], now:'', draft:{...}}
+function newDraft(){return {asset:'S&P500',memo:'',type:'broad',cur:'jpy',high:'',cash:''};}
+function newBattle(){return {decl:null,fills:[],now:'',draft:newDraft()};}
+const state={battles:[newBattle()],active:0};
+const B=()=>state.battles[state.active];
 
 const $=id=>document.getElementById(id);
-let uiCur='jpy';
-const cur=()=>state.decl?(state.decl.cur||'jpy'):uiCur;
+const cur=()=>B().decl?(B().decl.cur||'jpy'):(B().draft.cur||'jpy');
 const yen=n=>cur()==='usd'
   ?'$'+n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})
   :'¥'+Math.round(n).toLocaleString('ja-JP');
 
-function save(){try{localStorage.setItem('bt_v2',JSON.stringify(state));}catch(e){}}
+function save(){try{localStorage.setItem('bt_v3',JSON.stringify(state));}catch(e){}}
 function load(){
-  try{const s=JSON.parse(localStorage.getItem('bt_v2')||'null');
-    if(s){state.decl=s.decl||null;state.fills=s.fills||[];state.now=s.now||'';}
+  try{
+    const s=JSON.parse(localStorage.getItem('bt_v3')||'null');
+    if(s&&Array.isArray(s.battles)&&s.battles.length){
+      state.battles=s.battles.slice(0,MAX_BATTLES).map(b=>({
+        decl:b.decl||null,fills:b.fills||[],now:b.now||'',draft:Object.assign(newDraft(),b.draft||{})
+      }));
+      state.active=Math.min(s.active||0,state.battles.length-1);
+      return;
+    }
+    // 旧単一戦場データ（bt_v2）からの自動移行
+    const old=JSON.parse(localStorage.getItem('bt_v2')||'null');
+    if(old&&(old.decl||(old.fills&&old.fills.length))){
+      state.battles=[{decl:old.decl||null,fills:old.fills||[],now:old.now||'',draft:newDraft()}];
+      state.active=0;save();
+    }
   }catch(e){}
 }
 
-let uiType='broad';
+/* ---------- tabs ---------- */
+function renderTabs(){
+  const bar=$('tabBar');bar.innerHTML='';
+  state.battles.forEach((b,i)=>{
+    const t=document.createElement('button');t.className='tab';
+    t.setAttribute('aria-selected',String(i===state.active));
+    t.textContent=b.decl?(b.decl.asset+(b.decl.memo?'·'+b.decl.memo:'')):'未宣言の枠';
+    t.onclick=()=>{state.active=i;render();};
+    bar.appendChild(t);
+  });
+  if(state.battles.length<MAX_BATTLES){
+    const a=document.createElement('button');a.className='tab add';a.textContent='＋ 戦場を追加';
+    a.onclick=()=>{state.battles.push(newBattle());state.active=state.battles.length-1;render();};
+    bar.appendChild(a);
+  }
+}
+
+/* ---------- declaration inputs (draft) ---------- */
 function setTypeUI(t){
-  uiType=t;
+  B().draft.type=t;
   $('tBroad').setAttribute('aria-pressed',String(t==='broad'));
   $('tVol').setAttribute('aria-pressed',String(t==='vol'));
   $('typeHint').textContent=t==='broad'
     ?'S&P500・NYダウ・日経など。戦場＝直近高値から30%。'
     :'SOX / 2243 など。ボラが高いので戦場を45%まで深く取る。';
 }
-$('tBroad').onclick=()=>{if(!state.decl)setTypeUI('broad')};
-$('tVol').onclick=()=>{if(!state.decl)setTypeUI('vol')};
+$('tBroad').onclick=()=>{if(!B().decl){setTypeUI('broad');save();}};
+$('tVol').onclick=()=>{if(!B().decl){setTypeUI('vol');save();}};
 $('asset').onchange=()=>{
-  if(state.decl)return;
+  if(B().decl)return;
+  B().draft.asset=$('asset').value;
   setTypeUI($('asset').value==='SOX(半導体)'?'vol':'broad');
+  save();
 };
-
-$('cJpy').onclick=()=>{if(!state.decl){uiCur='jpy';render();}};
-$('cUsd').onclick=()=>{if(!state.decl){uiCur='usd';render();}};
+$('memo').addEventListener('input',()=>{if(!B().decl){B().draft.memo=$('memo').value;save();}});
+$('high').addEventListener('input',()=>{if(!B().decl){B().draft.high=$('high').value;save();}});
+$('cash').addEventListener('input',()=>{if(!B().decl){B().draft.cash=$('cash').value;save();}});
+$('cJpy').onclick=()=>{if(!B().decl){B().draft.cur='jpy';render();}};
+$('cUsd').onclick=()=>{if(!B().decl){B().draft.cur='usd';render();}};
 
 $('declBtn').onclick=()=>{
-  const high=parseFloat($('high').value)||0, cash=parseFloat($('cash').value)||0;
+  const dr=B().draft;
+  const high=parseFloat(dr.high)||0, cash=parseFloat(dr.cash)||0;
   if(high<=0||cash<=0){alert('直近高値と総資金を入れてください。');return;}
-  state.decl={asset:$('asset').value,memo:$('memo').value,type:uiType,cur:uiCur,high,cash,
+  B().decl={asset:dr.asset,memo:dr.memo,type:dr.type,cur:dr.cur,high,cash,
     date:new Date().toLocaleDateString('ja-JP')};
-  state.fills=[];state.now='';
+  B().fills=[];B().now='';
+  render();
+};
+
+$('delSlotBtn').onclick=()=>{
+  if(B().decl||state.battles.length<=1)return;
+  state.battles.splice(state.active,1);
+  state.active=Math.max(0,state.active-1);
   render();
 };
 
 function closeBattle(){
-  if(!state.decl)return;
-  const spent=state.fills.reduce((a,f)=>a+f.amount,0);
-  const remain=Math.max(0,state.decl.cash-spent);
-  const asset=state.decl.asset,memo=state.decl.memo,type=state.decl.type,c=state.decl.cur||'jpy';
-  state.decl=null;state.fills=[];state.now='';
+  const b=B();if(!b.decl)return;
+  const spent=b.fills.reduce((a,f)=>a+f.amount,0);
+  const remain=Math.max(0,b.decl.cash-spent);
   // 引き継ぎ：資産・タイプ・通貨はそのまま、資金欄には残弾をプリセット
-  uiCur=c;
-  $('asset').value=asset;$('memo').value=memo;setTypeUI(type);
-  $('high').value='';$('cash').value=remain>0?Math.round(remain):'';
+  b.draft={asset:b.decl.asset,memo:b.decl.memo,type:b.decl.type,cur:b.decl.cur||'jpy',
+    high:'',cash:remain>0?String(Math.round(remain*100)/100):''};
+  b.decl=null;b.fills=[];b.now='';
   render();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -386,25 +436,40 @@ $('nhBtn').onclick=closeBattle;
 $('rcBtn').onclick=closeBattle;
 
 function stages(){
-  const D=state.decl.type==='broad'?30:45, step=D/6, h=state.decl.high, c=state.decl.cash;
-  const arr=[];for(let n=1;n<=6;n++)arr.push({n,drop:step*n,price:h*(1-step*n/100),amount:c*WEIGHTS[n-1]});
+  const d=B().decl;
+  const D=d.type==='broad'?30:45, step=D/6;
+  const arr=[];for(let n=1;n<=6;n++)arr.push({n,drop:step*n,price:d.high*(1-step*n/100),amount:d.cash*WEIGHTS[n-1]});
   return {D,step,arr};
 }
 
 function render(){
-  const declared=!!state.decl;
+  renderTabs();
+  const b=B(),declared=!!b.decl;
+  // 宣言前は下書きを入力欄へ反映（タブ切替でも消えない）
+  if(!declared){
+    if($('asset').value!==b.draft.asset)$('asset').value=b.draft.asset;
+    if($('memo').value!==b.draft.memo)$('memo').value=b.draft.memo;
+    if($('high').value!==b.draft.high)$('high').value=b.draft.high;
+    if($('cash').value!==b.draft.cash)$('cash').value=b.draft.cash;
+    setTypeUI(b.draft.type);
+  }else{
+    $('asset').value=b.decl.asset;$('memo').value=b.decl.memo;
+    $('high').value=b.decl.high;$('cash').value=b.decl.cash;
+    setTypeUI(b.decl.type);
+  }
   ['asset','memo','high','cash'].forEach(id=>$(id).disabled=declared);
   $('tBroad').disabled=declared;$('tVol').disabled=declared;
   $('cJpy').disabled=declared;$('cUsd').disabled=declared;
   $('cJpy').setAttribute('aria-pressed',String(cur()==='jpy'));
   $('cUsd').setAttribute('aria-pressed',String(cur()==='usd'));
   $('declBtnRow').style.display=declared?'none':'flex';
+  $('delSlotBtn').style.display=(!declared&&state.battles.length>1)?'inline-block':'none';
   $('declCard').style.display=declared?'block':'none';
   $('battleUI').style.display=declared?'block':'none';
   $('bNewHigh').style.display='none';$('bRecover').style.display='none';
   if(!declared){save();return;}
 
-  const d=state.decl,{D,arr}=stages();
+  const d=b.decl,{D,arr}=stages();
   const label=d.asset+(d.memo?'（'+d.memo+'）':'');
   $('declRow').innerHTML=
     '<span><span class="k">対象</span><b>'+label+'</b></span>'+
@@ -414,12 +479,12 @@ function render(){
     '<span><span class="k">総資金</span><b>'+yen(d.cash)+'</b></span>'+
     '<span><span class="k">宣言日</span><b>'+d.date+'</b></span>';
 
-  if($('now').value!==state.now)$('now').value=state.now;
-  const nowV=parseFloat(state.now)||0;
+  if($('now').value!==b.now)$('now').value=b.now;
+  const nowV=parseFloat(b.now)||0;
   const curDrop=nowV>0?(1-nowV/d.high)*100:null;
 
-  const filled=new Set(state.fills.map(f=>f.stage));
-  const spent=state.fills.reduce((a,f)=>a+f.amount,0);
+  const filled=new Set(b.fills.map(f=>f.stage));
+  const spent=b.fills.reduce((a,f)=>a+f.amount,0);
   const remain=Math.max(0,d.cash-spent);
   const allDone=filled.size>=6;
 
@@ -427,7 +492,7 @@ function render(){
   if(nowV>0&&nowV>d.high){
     $('nhCash').textContent='残弾 '+yen(remain);
     $('bNewHigh').style.display='block';
-  } else if(nowV>0&&state.fills.length>0&&curDrop!==null&&curDrop<RECOVER_PCT){
+  } else if(nowV>0&&b.fills.length>0&&curDrop!==null&&curDrop<RECOVER_PCT){
     $('rcCash').textContent=yen(remain);
     $('bRecover').style.display='block';
   }
@@ -497,14 +562,14 @@ function render(){
   });
 
   // ammo（平均単価は実約定価格ベース）
-  const units=state.fills.reduce((a,f)=>a+(f.fillPrice>0?f.amount/f.fillPrice:0),0);
+  const units=b.fills.reduce((a,f)=>a+(f.fillPrice>0?f.amount/f.fillPrice:0),0);
   $('spent').textContent=yen(spent);
   $('ammo').textContent=yen(remain);
   $('avg').textContent=units>0?Math.round(spent/units).toLocaleString():'—';
 
   // history
   const hb=$('histBox');hb.innerHTML='';
-  state.fills.slice().reverse().forEach(f=>{
+  b.fills.slice().reverse().forEach(f=>{
     const dv=document.createElement('div');dv.className='h';
     dv.innerHTML='<span>'+f.date+' · '+f.stage+'段目 · 約定 '+Math.round(f.fillPrice).toLocaleString()+'</span><span>'+yen(f.amount)+'</span>';
     hb.appendChild(dv);
@@ -515,7 +580,7 @@ function render(){
 }
 
 function renderFreq(){
-  const d=state.decl;if(!d)return;
+  const d=B().decl;if(!d)return;
   let key=d.asset,noteExtra='';
   if(!DD[key]){key=d.type==='vol'?'SOX(半導体)':'S&P500';
     noteExtra='（「その他」のため、タイプに応じた代表指数の分布を参考表示）';}
@@ -535,26 +600,26 @@ function renderFreq(){
     'この分布は「各局面が最終的に止まった深さ」。浅く見えても、その裏に35年に1度の−'+Math.abs(dd.max_dd_pct).toFixed(0)+'%が同居しています。';
 }
 
-$('now').addEventListener('input',()=>{state.now=$('now').value;render();});
+$('now').addEventListener('input',()=>{B().now=$('now').value;render();});
 $('fireBtn').onclick=()=>{
   const fp=parseFloat($('fillPrice').value)||0;
   if(fp<=0){alert('実際に買った価格（約定価格）を入れてください。');return;}
-  const d=state.decl,{arr}=stages();
-  const nowV=parseFloat(state.now)||0;
-  const curDrop=nowV>0?(1-nowV/d.high)*100:0;
-  const filled=new Set(state.fills.map(f=>f.stage));
+  const b=B(),{arr}=stages();
+  const nowV=parseFloat(b.now)||0;
+  const curDrop=nowV>0?(1-nowV/b.decl.high)*100:0;
+  const filled=new Set(b.fills.map(f=>f.stage));
   const reached=arr.filter(s=>!filled.has(s.n)&&curDrop>=s.drop-1e-9);
   if(reached.length===0)return;
   const today=new Date().toLocaleDateString('ja-JP');
-  reached.forEach(s=>state.fills.push({stage:s.n,trigger:s.price,fillPrice:fp,amount:s.amount,date:today}));
+  reached.forEach(s=>b.fills.push({stage:s.n,trigger:s.price,fillPrice:fp,amount:s.amount,date:today}));
   $('fillPrice').value='';
   render();
 };
-$('undoBtn').onclick=()=>{state.fills.pop();render();};
+$('undoBtn').onclick=()=>{B().fills.pop();render();};
 
 load();
-if(state.decl){setTypeUI(state.decl.type);}
 render();
+
 </script>
 </body>
 </html>
