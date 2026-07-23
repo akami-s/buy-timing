@@ -125,6 +125,9 @@
   .freq .barwrap{flex:1;background:var(--paper2);border-radius:3px;height:18px;position:relative;overflow:hidden}
   .freq .bar{height:100%;background:var(--deep);opacity:.72}
   .freq .cnt{width:80px;font-size:12px;font-variant-numeric:tabular-nums}
+  .freq .heretag{font-size:11px;color:var(--calm);font-weight:700;white-space:nowrap;margin-left:4px}
+  .freq .row.here .lbl{color:var(--calm);font-weight:600}
+  .freq .row.here .barwrap{outline:1.5px solid var(--calm);outline-offset:1px}
   .note{font-size:11.5px;color:var(--muted);background:var(--paper2);border-radius:5px;padding:9px 12px;margin-top:10px;line-height:1.55}
   .note b{color:var(--deep)}
 
@@ -307,7 +310,7 @@
 
   <!-- 04 frequency -->
   <h2><span class="n">04</span>この深さは、過去どのくらいの頻度か</h2>
-  <div class="hint" style="margin-bottom:6px">1990–2026（約35年）／ 出典：Yahoo Finance。今いる深さが「普段」なのか「稀」なのかの目安。</div>
+  <div class="hint" style="margin-bottom:6px">1990–2026（約35年・データ基準日 2026-06-22）／ 出典：Yahoo Finance。今いる深さが「普段」なのか「稀」なのかの目安。<b>棒に数えるのは「終わった局面」だけ</b>——高値から−5%以内まで回復して初めて1局面と確定します。まだ終わっていない下落は棒に含まれません。</div>
   <div class="freq" id="freqBox"></div>
   <div class="note" id="freqNote"></div>
   </div><!-- /battleUI -->
@@ -317,12 +320,13 @@
     ここに表示される平均取得単価・履歴は練習の控えです。<b>正式な保有記録・取得単価は、お使いの証券会社の画面が正</b>です。ポートフォリオ管理はそちらで行ってください。<br>
     ここで動かすのは失っても致命傷にならないサテライト資金だけ。コア資産は別途、積立・債券でゆっくり育ててください。<br>
     記録はこの端末のこのブラウザの中だけに保存され、どこにも送信されません。<b>ブラウザのデータ消去や長期間の未使用で消えることがあります</b>。大事な数字（平均単価・買付履歴）は別途メモを推奨します。<br>
-    <span style="letter-spacing:.08em">ver 1.3</span>
+    <span style="letter-spacing:.08em">ver 1.4</span>
   </div>
 </div>
 
 <script>
-const DD = {"S&P500":{"years":36.5,"max_dd_pct":-56.8,"range_bands":{"-20〜-30":1,"-30〜-40":1,"-40〜-50":1,"-50〜-60":1,"-60以下":0}},"NYダウ":{"years":34.5,"max_dd_pct":-53.8,"range_bands":{"-20〜-30":1,"-30〜-40":2,"-40〜-50":0,"-50〜-60":1,"-60以下":0}},"ナスダック":{"years":36.5,"max_dd_pct":-77.9,"range_bands":{"-20〜-30":3,"-30〜-40":3,"-40〜-50":0,"-50〜-60":0,"-60以下":1}},"SOX(半導体)":{"years":32.1,"max_dd_pct":-87.1,"range_bands":{"-20〜-30":2,"-30〜-40":3,"-40〜-50":1,"-50〜-60":2,"-60以下":1}},"Nikkei225":{"years":36.5,"max_dd_pct":-81.8,"range_bands":{"-20〜-30":2,"-30〜-40":0,"-40〜-50":0,"-50〜-60":0,"-60以下":1}}};
+const DD = {"S&P500":{"years":36.5,"max_dd_pct":-56.8,"range_bands":{"-20〜-30":1,"-30〜-40":1,"-40〜-50":1,"-50〜-60":1,"-60以下":0}},"NYダウ":{"years":34.5,"max_dd_pct":-53.8,"range_bands":{"-20〜-30":1,"-30〜-40":2,"-40〜-50":0,"-50〜-60":1,"-60以下":0}},"ナスダック":{"years":36.5,"max_dd_pct":-77.9,"range_bands":{"-20〜-30":3,"-30〜-40":3,"-40〜-50":0,"-50〜-60":0,"-60以下":1}},"SOX(半導体)":{"years":32.1,"max_dd_pct":-87.1,"range_bands":{"-20〜-30":2,"-30〜-40":3,"-40〜-50":1,"-50〜-60":2,"-60以下":1},"ongoing":{"text":"SOXは2026年6月下旬の高値（約14,655）から下げ続け、<b>2026-07-17に終値ベースで−20%到達</b>。確定すれば32年で<b>10例目</b>の−20%局面になります。ただし−5%以内まで回復して局面が終わるまでは、上の棒には加えません——どこで止まるかを先に描くのは予測だからです。"}},"Nikkei225":{"years":36.5,"max_dd_pct":-81.8,"range_bands":{"-20〜-30":2,"-30〜-40":0,"-40〜-50":0,"-50〜-60":0,"-60以下":1}}};
+const DD_ASOF="2026-06-22"; // 頻度データの基準日（確定局面のみ収録）
 
 // 純・線形加速：前半3段=総資金40%を1:2:3、後半3段=総資金60%を1:2:3
 const WEIGHTS=[0.40/6,0.80/6,1.20/6,0.60/6,1.20/6,1.80/6];
@@ -580,24 +584,40 @@ function render(){
 }
 
 function renderFreq(){
-  const d=B().decl;if(!d)return;
+  const b=B(),d=b.decl;if(!d)return;
   let key=d.asset,noteExtra='';
   if(!DD[key]){key=d.type==='vol'?'SOX(半導体)':'S&P500';
     noteExtra='（「その他」のため、タイプに応じた代表指数の分布を参考表示）';}
   const dd=DD[key],bands=dd.range_bands;
+  // あなたは今ここ：手入力（直近高値・現在値）から進行中の深さを出し、該当する帯に印を付ける
+  const nowV=parseFloat(b.now)||0;
+  const curDrop=nowV>0?(1-nowV/d.high)*100:null;
+  let hereLbl=null;
+  if(curDrop!==null&&curDrop>=20){
+    hereLbl=curDrop<30?'-20〜-30':curDrop<40?'-30〜-40':curDrop<50?'-40〜-50':curDrop<60?'-50〜-60':'-60以下';
+  }
   const max=Math.max(...Object.values(bands),1);
   const fb=$('freqBox');fb.innerHTML='';
   Object.entries(bands).forEach(([lbl,c])=>{
-    const row=document.createElement('div');row.className='row';
+    const here=lbl===hereLbl;
+    const row=document.createElement('div');row.className='row'+(here?' here':'');
     row.innerHTML='<span class="lbl">'+lbl+'</span>'+
       '<span class="barwrap"><span class="bar" style="width:'+(c/max*100)+'%"></span></span>'+
-      '<span class="cnt">'+c+'回 / '+dd.years+'年</span>';
+      '<span class="cnt">'+c+'回 / '+dd.years+'年</span>'+
+      (here?'<span class="heretag">← 今ここ</span>':'');
     fb.appendChild(row);
   });
+  let pos='';
+  if(curDrop!==null&&curDrop>0){
+    pos=hereLbl
+      ?'<b>「今ここ」（−'+curDrop.toFixed(1)+'%）は進行中の局面</b>——まだどの棒にも数えられていません。棒は確定した過去、あなたが立っているのは未確定の現在。どこで止まるかは誰にも分かりません。<br>'
+      :'現在 −'+curDrop.toFixed(1)+'%。このグラフの帯（−20%以深）にはまだ入っていません。<br>';
+  }
   $('freqNote').innerHTML=
-    '<b>'+key+'</b>'+noteExtra+'：'+dd.years+'年で最大 '+dd.max_dd_pct+'%。'+
+    pos+'<b>'+key+'</b>'+noteExtra+'：'+dd.years+'年で最大 '+dd.max_dd_pct+'%。'+
     '深い帯（−50%超）は稀ですが、<b>頻度の低さと損害の深刻さは別物</b>です。'+
-    'この分布は「各局面が最終的に止まった深さ」。浅く見えても、その裏に35年に1度の−'+Math.abs(dd.max_dd_pct).toFixed(0)+'%が同居しています。';
+    'この分布は「確定した各局面が最終的に止まった深さ」。浅く見えても、その裏に35年に1度の−'+Math.abs(dd.max_dd_pct).toFixed(0)+'%が同居しています。'+
+    (dd.ongoing?'<br><br><b>基準日（'+DD_ASOF+'）以降の進行中局面</b>：'+dd.ongoing.text:'');
 }
 
 $('now').addEventListener('input',()=>{B().now=$('now').value;render();});
